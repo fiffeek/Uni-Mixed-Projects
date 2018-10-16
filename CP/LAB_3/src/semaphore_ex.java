@@ -31,7 +31,6 @@ public class semaphore_ex {
 
         private int wiersz, kolumna;
         private IntBinaryOperator macierz;
-        private final Semaphore mutex = new Semaphore(1);
 
         threadRun(int wiersz, int kolumna, IntBinaryOperator macierz) {
             this.wiersz = wiersz;
@@ -43,12 +42,10 @@ public class semaphore_ex {
         public void run() {
             while (this.wiersz < WIERSZE) {
                 try {
-                    mutex.acquire();
                     current_sum[this.kolumna] = macierz.applyAsInt(this.wiersz, this.kolumna);
                     sum_barier.await();
 
                     this.wiersz++;
-                    mutex.release();
                 } catch (Exception e) {
 
                 }

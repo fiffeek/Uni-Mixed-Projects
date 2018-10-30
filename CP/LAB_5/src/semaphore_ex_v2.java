@@ -1,7 +1,7 @@
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Semaphore;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntBinaryOperator;
 
@@ -9,13 +9,8 @@ public class semaphore_ex_v2 {
 
     private static final int WIERSZE = 10;
     private static final int KOLUMNY = 100;
-    private static volatile AtomicInteger[] current_sum = new AtomicInteger[WIERSZE];
-    private static ConcurrentHashMap<Integer, AtomicInteger> hm = new ConcurrentHashMap<>();
-    private static ConcurrentHashMap<Integer, AtomicInteger> ai = new ConcurrentHashMap<>();
-    private static int actual_to_write = 0;
-    private static Semaphore mutex = new Semaphore(1);
 
-    private static class threadRun implements Runnable {
+    private static class threadRun implements Callable<Integer> {
 
         private int wiersz, kolumna;
         private IntBinaryOperator macierz;
@@ -27,50 +22,35 @@ public class semaphore_ex_v2 {
         }
 
         @Override
-        public void run() {
-            while (this.wiersz < WIERSZE) {
-                try {
-                    hm.get(this.wiersz).getAndAdd(macierz.applyAsInt(this.wiersz, this.kolumna));
-                    ai.get(this.wiersz).getAndDecrement();
-
-                    mutex.acquire();
-                    if (actual_to_write == this.wiersz && ai.get(this.wiersz).get() == 0) {
-                        System.out.println(hm.get(this.wiersz).get());
-                        hm.remove(this.wiersz);
-                        ai.remove(this.wiersz);
-                        actual_to_write++;
-                    }
-                    mutex.release();
-
-                    this.wiersz++;
-                } catch (Exception e) {
-
-                }
-            }
+        public Integer call() throws InterruptedException {
+            return macierz.applyAsInt(this.wiersz, this.kolumna);
         }
     }
 
     private static void piszSumyWierszy(int wiersze, int kolumny, IntBinaryOperator macierz) {
+        ExecutorService pula = Executors.newFixedThreadPool(4);
 
-        for (int i = 0; i < WIERSZE; ++i) {
-            hm.put(i, new AtomicInteger(0));
-            ai.put(i, new AtomicInteger(KOLUMNY));
-        }
+        try {
+            for (int w = 0; w < WIERSZE; ++w) {
+                List<Callable<Integer>> obliczenia = new ArrayList<>();
 
-        ArrayList<Thread> al = new ArrayList<>();
+                for (int k = 0; k < kolumny; ++k) {
+                    obliczenia.add(new threadRun(w, k, macierz));
+                }
 
-        for (int k = 0; k < kolumny; ++k) {
-            Thread t = new Thread(new threadRun(0, k, macierz));
-            al.add(t);
-            t.start();
-        }
+                List<Future<Integer>> obietnice = pula.invokeAll(obliczenia);
+                int sum = 0;
 
-        for (Thread t: al) {
-            try {
-                t.join();
-            } catch (Exception e) {
+                for (Future<Integer> kolejna : obietnice) {
+                    sum += kolejna.get();
+                }
 
+                System.out.println(sum);
             }
+        } catch (Exception e) {
+
+        } finally {
+            pula.shutdown();
         }
     }
 

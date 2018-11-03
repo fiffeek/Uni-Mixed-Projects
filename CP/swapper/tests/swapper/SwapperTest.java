@@ -52,9 +52,24 @@ public class SwapperTest {
         t4.join();
         t2.start();
         t5.start();
-        t2.interrupt();
         t2.join();
         t5.join();
+    }
+
+    @org.junit.Test
+    public void swapWithInterrupt() throws Exception {
+        Swapper<Integer> s = new Swapper<>();
+        HashSet<Integer> one = new HashSet<>(Arrays.asList(1, 4, 5));
+        HashSet<Integer> two = new HashSet<>(Arrays.asList());
+        HashSet<Integer> three = new HashSet<>(Arrays.asList(1, 4));
+
+        Thread waiter = new Thread(new ThreadGiver(s, one, one), "[1, 4, 5] -> [1, 4, 5]");
+        Thread go = new Thread(new ThreadGiver(s, two, three), "[] -> [1, 4]");
+        waiter.start();
+        go.start();
+        go.join();
+
+
     }
 
     @Test
@@ -64,7 +79,8 @@ public class SwapperTest {
             Collection<Integer> empty = Collections.emptySet();
             Collection<Integer> singletonOne = Collections.singleton(1);
             swapper.swap(empty, singletonOne);
-            swapper.swap(singletonOne, empty);
+
+            swapper.swap(singletonOne, singletonOne);
             assert(true);
         } catch (InterruptedException e) {
             assert(false);

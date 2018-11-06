@@ -6,12 +6,12 @@ import java.util.concurrent.Semaphore;
 
 public class Swapper<E> {
 
-    private HashSet<E> elements;
+    public HashSet<E> elements;
     private Semaphore mutex;
     private ConcurrentHashMap<E, List<Waiter>> elementsAvailability;
 
     private int waitersNum = 0;
-    private final boolean DEBUG = true;
+    private final boolean DEBUG = false;
 
     public Swapper() {
         this.elements = new HashSet<>();
@@ -94,6 +94,11 @@ public class Swapper<E> {
         System.err.println(deb);
     }
 
+    /**
+     * Cleans up after the process was interrupted
+     * @param removedSet - set which was removed from the swapper
+     * @param addedSet - set which was added to the swapper
+     */
     private void cleanUp(HashSet<E> removedSet, HashSet<E> addedSet) {
         changeConditions(addedSet, 1);
         elements.removeAll(addedSet);
@@ -116,11 +121,16 @@ public class Swapper<E> {
         // the collections given
         HashSet<E> removedSet = new HashSet<>(removed);
         HashSet<E> addedSet = new HashSet<>(added);
+        HashSet<E> addedSetWithRepetitions = new HashSet<>(added);
 
         // ~ here the swapper acquires a mutex
         // if acquire throws interrupted exception that is fine
         // we have not modified anything yet
         mutex.acquire();
+
+        // we remove from the addSEt the elements already
+        // added to the Swapper
+        addedSet.removeAll(elements);
         Waiter waiter = new Waiter(removedSet.size() - howManyElemInSet(removedSet), waitersNum++);
         addRemoveConditions(removedSet, waiter);
         logDebug("Added conditions for " + Thread.currentThread().toString());
@@ -162,7 +172,7 @@ public class Swapper<E> {
         // it is time to add the elements and
         // for every element added the swapper changes
         // condition for every Waiter waiting for that element
-        elements.addAll(addedSet);
+        elements.addAll(addedSetWithRepetitions);
         changeConditions(addedSet, -1);
 
         logDebug("Changed conditions");
@@ -210,14 +220,14 @@ public class Swapper<E> {
                 mutex.release();
                 throw new InterruptedException();
             }
+            logDebug("Elements in a set " + elements.size() + " in a " + Thread.currentThread().toString());
 
             mutex.release();
         }
-
-        logDebug("Elements in a set " + elements.size() + " in a " + Thread.currentThread().toString());
     }
 
     private static class Waiter {
+
         int elemNumber;
         Semaphore mutex;
         private int num;

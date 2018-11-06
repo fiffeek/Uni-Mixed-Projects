@@ -30,6 +30,27 @@ public class SwapperTest {
 
 
     @org.junit.Test
+    public void swapConcurrentTest() throws Exception {
+        Swapper<Integer> s = new Swapper<>();
+        HashSet<Integer> empty = new HashSet<>();
+        HashSet<Integer> onethree = new HashSet<>(Arrays.asList(1, 3));
+        HashSet<Integer> onetwo = new HashSet<>(Arrays.asList(1, 2));
+        HashSet<Integer> three = new HashSet<>(Arrays.asList(3));
+
+//        Thread t1 = new Thread(new ThreadGiver(s, empty, onetwothree), "[] -> [1, 2, 3]");
+//        Thread t2 = new Thread(new ThreadGiver(s, onetwo, empty), "[1, 2] -> []");
+//        Thread t3 = new Thread(new ThreadGiver(s, twothree, empty), "[2, 3] -> []");
+//
+//        t3.start();
+//        t1.start();
+//        t2.start();
+//        t2.interrupt();
+//        t3.join();
+//        t1.join();
+    }
+
+
+    @org.junit.Test
     public void swap() throws Exception {
         Swapper<Integer> s = new Swapper<>();
         HashSet<Integer> empty = new HashSet<>();

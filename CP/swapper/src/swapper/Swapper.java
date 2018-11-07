@@ -99,9 +99,9 @@ public class Swapper<E> {
      * @param removedSet - set which was removed from the swapper
      * @param addedSet - set which was added to the swapper
      */
-    private void cleanUp(HashSet<E> removedSet, HashSet<E> addedSet) {
+    private void cleanUp(HashSet<E> removedSet, HashSet<E> addedSet, HashSet<E> addedSetWithRepetitions) {
         changeConditions(addedSet, 1);
-        elements.removeAll(addedSet);
+        elements.removeAll(addedSetWithRepetitions);
         changeConditions(removedSet, -1);
         elements.addAll(removedSet);
     }
@@ -128,9 +128,12 @@ public class Swapper<E> {
         // we have not modified anything yet
         mutex.acquire();
 
-        // we remove from the addSEt the elements already
-        // added to the Swapper
-        addedSet.removeAll(elements);
+        // we remove from the addSet the elements already
+        // added present in swapper (without the ones we will remove)
+        HashSet<E> swapperMinusRemoved = new HashSet<>(elements);
+        swapperMinusRemoved.removeAll(removedSet);
+        addedSet.removeAll(swapperMinusRemoved);
+
         Waiter waiter = new Waiter(removedSet.size() - howManyElemInSet(removedSet), waitersNum++);
         addRemoveConditions(removedSet, waiter);
         logDebug("Added conditions for " + Thread.currentThread().toString());
@@ -193,7 +196,7 @@ public class Swapper<E> {
                     logDebug("Invoking waiter");
 
                     if (Thread.currentThread().isInterrupted()) {
-                        cleanUp(removedSet, addedSet);
+                        cleanUp(removedSet, addedSet, addedSetWithRepetitions);
                         mutex.release();
                         throw new InterruptedException();
                     }
@@ -216,7 +219,7 @@ public class Swapper<E> {
         if (!alreadyInvoked) {
 
             if (Thread.currentThread().isInterrupted()) {
-                cleanUp(removedSet, addedSet);
+                cleanUp(removedSet, addedSet, addedSetWithRepetitions);
                 mutex.release();
                 throw new InterruptedException();
             }

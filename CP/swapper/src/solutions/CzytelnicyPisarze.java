@@ -1,9 +1,6 @@
 package solutions;
 
-import jdk.nashorn.internal.objects.Global;
 import swapper.Swapper;
-
-import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,9 +9,9 @@ import java.util.Random;
 public class CzytelnicyPisarze {
 
     private static final Swapper<Integer> GlobalSwap = new Swapper<>();
-    private static final int mutex = 0;
-    private static final int globalVariable = 3;
-    private static final int canWrite = 2;
+    private static final int mutex = 0; // mutex
+    private static final int globalVariable = 3; // access to global variables
+    private static final int canWrite = 2; // access to write
     private static int howManyReading = 0;
     private static Collection<Integer> globalEmpty = Collections.emptyList();
     private static int MAX_READ_PER_THREAD = 8;
@@ -61,7 +58,7 @@ public class CzytelnicyPisarze {
                     }
 
                 } catch (Exception e) {
-
+                    System.err.println("Thread interrupted");
                 }
             }
         }
@@ -92,7 +89,7 @@ public class CzytelnicyPisarze {
                     GlobalSwap.swap(globalEmpty, Arrays.asList(globalVariable, mutex));
 
                 } catch (Exception e) {
-
+                    System.err.println("Thread interrupted");
                 }
             }
         }
@@ -100,7 +97,6 @@ public class CzytelnicyPisarze {
 
     public static void main(String args[]) throws Exception {
         GlobalSwap.swap(globalEmpty, Arrays.asList(mutex, canWrite, globalVariable));
-
 
         Thread t2 = new Thread(new Pisarz());
         Thread t3 = new Thread(new Czytelnik());

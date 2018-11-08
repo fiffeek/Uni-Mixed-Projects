@@ -129,7 +129,7 @@ public class Swapper<E> {
         mutex.acquire();
 
         // we remove from the addSet the elements already
-        // added present in swapper (without the ones we will remove)
+        // present in the swapper (without the ones we will remove)
         HashSet<E> swapperMinusRemoved = new HashSet<>(elements);
         swapperMinusRemoved.removeAll(removedSet);
         addedSet.removeAll(swapperMinusRemoved);

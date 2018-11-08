@@ -49,7 +49,7 @@ public class ProducenciKonsumenci {
                         GlobalSwap.swap(globalEmpty, Arrays.asList(mutex, canConsume));
                     }
                 } catch (Exception e) {
-
+                    System.err.println("Thread interrupted");
                 }
             }
         }
@@ -79,7 +79,7 @@ public class ProducenciKonsumenci {
                         GlobalSwap.swap(globalEmpty, Arrays.asList(canProduce, mutex));
                     }
                 } catch (Exception e) {
-
+                    System.err.println("Thread interrupted");
                 }
             }
         }

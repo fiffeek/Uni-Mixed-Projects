@@ -2,20 +2,21 @@ package swapper;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Swapper<E> {
 
     private HashSet<E> elements;
-    private Semaphore mutex;
     private ConcurrentHashMap<E, List<Waiter>> elementsAvailability;
+    private Lock lock = new ReentrantLock();
 
     private int waitersNum = 0;
     private final boolean DEBUG = false;
 
     public Swapper() {
         this.elements = new HashSet<>();
-        this.mutex = new Semaphore(1);
         this.elementsAvailability = new ConcurrentHashMap<>();
     }
 
@@ -80,7 +81,7 @@ public class Swapper<E> {
      */
     private void removeConditions(Waiter waiter) {
         for (List<Waiter> waiters: elementsAvailability.values()) {
-            waiters.removeIf(elem -> elem.equals(waiter));
+            waiters.remove(waiter);
         }
     }
 
@@ -114,130 +115,78 @@ public class Swapper<E> {
      * @param added - collection to add to the swapper
      */
     public void swap(Collection<E> removed, Collection<E> added) throws InterruptedException  {
-        // DISCLAIMER: solution with mutex forwarding,
-        // sections commented with ~ are about that
-
-        // firstly we ensure that there are no duplicates in either of
-        // the collections given
         HashSet<E> removedSet = new HashSet<>(removed);
         HashSet<E> addedSet = new HashSet<>(added);
         HashSet<E> addedSetWithRepetitions = new HashSet<>(added);
 
-        // ~ here the swapper acquires a mutex
-        // if acquire throws interrupted exception that is fine
-        // we have not modified anything yet
-        mutex.acquire();
+        lock.lockInterruptibly();
 
-        // we remove from the addSet the elements already
-        // present in the swapper (without the ones we will remove)
-        HashSet<E> swapperMinusRemoved = new HashSet<>(elements);
-        swapperMinusRemoved.removeAll(removedSet);
-        addedSet.removeAll(swapperMinusRemoved);
-
-        Waiter waiter = new Waiter(removedSet.size() - howManyElemInSet(removedSet), waitersNum++);
+        Waiter waiter = new Waiter(
+                removedSet.size() - howManyElemInSet(removedSet),
+                waitersNum++,
+                lock.newCondition()
+        );
         addRemoveConditions(removedSet, waiter);
         logDebug("Added conditions for " + Thread.currentThread().toString());
 
-        try {
-            // ~ if elemNumber is not a zero
-            // that means this thread is going to wait on a Waiter
-            // below, so we release the mutex to someone else
-            if (waiter.elemNumber != 0) {
-                mutex.release();
+        while (waiter.elemNumber > 0) {
+            try {
+                waiter.mutex.await();
+            } catch (InterruptedException e) {
+                removeConditions(waiter);
+                lock.unlock();
+
+                throw e;
             }
-
-            waiter.mutex.acquire();
-            // ~ if the swapper entered this section of code,
-            // the thread has the mutex
-
-            logDebug("Invoked " + Thread.currentThread().toString());
-        } catch (InterruptedException e) {
-            // in this case we need to remove conditions
-            removeConditions(waiter);
-            mutex.release();
-            throw e;
         }
 
-        logDebug("Actually adding in " + Thread.currentThread().toString());
+        HashSet<E> swapperMinusRemoved = new HashSet<>(elements);
+        swapperMinusRemoved.removeAll(removedSet);
+        addedSet.removeAll(swapperMinusRemoved);
+        boolean exceptionThrow = false;
+        logDebug("Actually swapping in " + Thread.currentThread().toString());
 
-        // if the swapper is in this scope
-        // it indicates that it acquired the mutex and the waiter
-        // so the elements that the thread has been waiting for are all
-        // present on a swapper, so we remove the (empty) condition
-        // as well as all the elements from the removedSet
         removeConditions(waiter);
         elements.removeAll(removedSet);
-
-        // now for every element, that the swapper removed
-        // we have to update all the Waiters in every list of that elements
         changeConditions(removedSet, 1);
-
-        // it is time to add the elements and
-        // for every element added the swapper changes
-        // condition for every Waiter waiting for that element
         elements.addAll(addedSetWithRepetitions);
         changeConditions(addedSet, -1);
 
-        logDebug("Changed conditions");
+        if (Thread.currentThread().isInterrupted()) {
+            cleanUp(removedSet, addedSet, addedSetWithRepetitions);
+            exceptionThrow = true;
+        }
 
-        // now swapper iterates over every condition
-        // checking whether it is possible to grant the access to any
-        // other thread (if the number of elements it has been waiting for is 0)
-        boolean alreadyInvoked = false;
+       ArrayList<Waiter> waitersToInvoke = new ArrayList<>();
+
         for (List<Waiter> waiters: elementsAvailability.values()) {
-
             for (Waiter waiterTemp: waiters) {
-
-                // if it is and if it has not been invoked so far
-                // the swapper invokes that thread and breaks
-                // (one thread can affect the other one so the swapper
-                // can't actually grant the permission to more than one thread here)
                 if (waiterTemp.elemNumber == 0) {
-                    logDebug("Invoking waiter");
-
-                    if (Thread.currentThread().isInterrupted()) {
-                        cleanUp(removedSet, addedSet, addedSetWithRepetitions);
-                        mutex.release();
-                        throw new InterruptedException();
-                    }
-
-                    // ~ note that the swapper does not release the mutex
-                    // instead it it being passed to the next thread
-                    waiterTemp.invoke();
-                    alreadyInvoked = true;
-                    break;
+                    waitersToInvoke.add(waiterTemp);
                 }
-            }
-
-            if (alreadyInvoked) {
-                break;
             }
         }
 
-        // ~ if none of the threads were given a mutex
-        // the swapper gives it to the world (random one who wants it)
-        if (!alreadyInvoked) {
+        for (Waiter temp: waitersToInvoke) {
+            temp.invoke();
+        }
 
-            if (Thread.currentThread().isInterrupted()) {
-                cleanUp(removedSet, addedSet, addedSetWithRepetitions);
-                mutex.release();
-                throw new InterruptedException();
-            }
-            logDebug("Elements in a set " + elements.size() + " in a " + Thread.currentThread().toString());
+        lock.unlock();
 
-            mutex.release();
+        if (exceptionThrow) {
+            throw new InterruptedException();
         }
     }
 
     private static class Waiter {
 
         int elemNumber;
-        Semaphore mutex;
+        Condition mutex;
         private int num;
 
-        Waiter(int elems, int index) {
+        Waiter(int elems, int index, Condition mutex) {
             this.elemNumber = elems;
-            this.mutex = elems == 0 ? new Semaphore(1) : new Semaphore(0);
+            this.mutex = mutex;
             this.num = index;
         }
 
@@ -246,7 +195,7 @@ public class Swapper<E> {
         }
 
         void invoke() {
-            this.mutex.release();
+            mutex.signal();
         }
 
         @Override

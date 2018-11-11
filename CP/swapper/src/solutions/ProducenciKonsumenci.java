@@ -10,7 +10,7 @@ public class ProducenciKonsumenci {
     private static final Integer mutex = 1;
     private static final Integer canConsume = 2;
     private static final Integer canProduce = 3;
-    private static final Swapper<Integer> GlobalSwap = new Swapper<>();
+    private static final Swapper<Integer> globalSwap = new Swapper<>();
     private static Collection<Integer> globalEmpty = Collections.emptyList();
     private static int firstToConsume = 0;
     private static int firstToPlace = 0;
@@ -27,7 +27,7 @@ public class ProducenciKonsumenci {
         public void run() {
             while (true) {
                 try {
-                    GlobalSwap.swap(Arrays.asList(mutex, canProduce), globalEmpty);
+                    globalSwap.swap(Arrays.asList(mutex, canProduce), globalEmpty);
                     this.valueToPut = rd.nextInt(100);
                     produced++;
                     bufor[firstToPlace] = valueToPut;
@@ -35,15 +35,15 @@ public class ProducenciKonsumenci {
                     firstToPlace = (firstToPlace + 1) % SIZE;
 
                     if (produced < SIZE && firstToPlace != firstToConsume) {
-                        GlobalSwap.swap(globalEmpty, Arrays.asList(canProduce));
+                        globalSwap.swap(globalEmpty, Arrays.asList(canProduce));
 
                         if (produced > 0) {
-                            GlobalSwap.swap(globalEmpty, Arrays.asList(canConsume));
+                            globalSwap.swap(globalEmpty, Arrays.asList(canConsume));
                         }
 
-                        GlobalSwap.swap(globalEmpty, Arrays.asList(mutex));
+                        globalSwap.swap(globalEmpty, Arrays.asList(mutex));
                     } else {
-                        GlobalSwap.swap(globalEmpty, Arrays.asList(mutex, canConsume));
+                        globalSwap.swap(globalEmpty, Arrays.asList(mutex, canConsume));
                     }
                 } catch (Exception e) {
                     System.err.println("Thread interrupted");
@@ -58,22 +58,22 @@ public class ProducenciKonsumenci {
         public void run() {
             while (true) {
                 try {
-                    GlobalSwap.swap(Arrays.asList(mutex, canConsume), globalEmpty);
+                    globalSwap.swap(Arrays.asList(mutex, canConsume), globalEmpty);
                     int consumed = bufor[firstToConsume];
                     produced--;
                     System.out.println("Eaten " + consumed + " on " + firstToConsume);
                     firstToConsume = (firstToConsume + 1) % SIZE;
 
                     if (produced > 0) {
-                        GlobalSwap.swap(globalEmpty, Arrays.asList(canConsume));
+                        globalSwap.swap(globalEmpty, Arrays.asList(canConsume));
 
                         if (produced < SIZE && firstToConsume != firstToPlace) {
-                            GlobalSwap.swap(globalEmpty, Arrays.asList(canProduce));
+                            globalSwap.swap(globalEmpty, Arrays.asList(canProduce));
                         }
 
-                        GlobalSwap.swap(globalEmpty, Arrays.asList(mutex));
+                        globalSwap.swap(globalEmpty, Arrays.asList(mutex));
                     } else {
-                        GlobalSwap.swap(globalEmpty, Arrays.asList(canProduce, mutex));
+                        globalSwap.swap(globalEmpty, Arrays.asList(canProduce, mutex));
                     }
                 } catch (Exception e) {
                     System.err.println("Thread interrupted");
@@ -84,7 +84,7 @@ public class ProducenciKonsumenci {
     }
 
     public static void main(String args[]) throws Exception {
-        GlobalSwap.swap(globalEmpty, Arrays.asList(mutex, canProduce));
+        globalSwap.swap(globalEmpty, Arrays.asList(mutex, canProduce));
 
         Thread t1 = new Thread(new Producent());
         Thread t3 = new Thread(new Producent());

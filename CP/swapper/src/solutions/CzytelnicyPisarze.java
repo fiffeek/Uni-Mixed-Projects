@@ -8,7 +8,7 @@ import java.util.Random;
 
 public class CzytelnicyPisarze {
 
-    private static final Swapper<Integer> GlobalSwap = new Swapper<>();
+    private static final Swapper<Integer> globalSwap = new Swapper<>();
     private static final int mutex = 0; // mutex
     private static final int globalVariable = 3; // access to global variables
     private static final int canWrite = 2; // access to write
@@ -32,29 +32,29 @@ public class CzytelnicyPisarze {
             for (int i = 0; i < MAX_READ_PER_THREAD; ++i) {
                 try {
 
-                    GlobalSwap.swap(Arrays.asList(globalVariable, mutex), globalEmpty);
+                    globalSwap.swap(Arrays.asList(globalVariable, mutex), globalEmpty);
                     //System.out.println("Started reading");
                     howManyReading++;
 
                     if (!accessTaken) {
-                        GlobalSwap.swap(Arrays.asList(canWrite), globalEmpty);
+                        globalSwap.swap(Arrays.asList(canWrite), globalEmpty);
                         accessTaken = true;
                     }
 
-                    GlobalSwap.swap(globalEmpty, Arrays.asList(globalVariable, mutex));
+                    globalSwap.swap(globalEmpty, Arrays.asList(globalVariable, mutex));
 
                     Thread.sleep(rd.nextInt(100));
                     System.out.println("Reading from " + position);
 
-                    GlobalSwap.swap(Arrays.asList(globalVariable), globalEmpty);
+                    globalSwap.swap(Arrays.asList(globalVariable), globalEmpty);
                     //System.out.println("End of reading");
                     howManyReading--;
 
                     if (howManyReading == 0) {
-                        GlobalSwap.swap(globalEmpty, Arrays.asList(globalVariable, canWrite));
+                        globalSwap.swap(globalEmpty, Arrays.asList(globalVariable, canWrite));
                         accessTaken = false;
                     } else {
-                        GlobalSwap.swap(globalEmpty, Arrays.asList(globalVariable));
+                        globalSwap.swap(globalEmpty, Arrays.asList(globalVariable));
                     }
 
                 } catch (Exception e) {
@@ -77,16 +77,16 @@ public class CzytelnicyPisarze {
         public void run() {
             for (int i = 0; i < MAX_WRITES_PER_THREAD; ++i) {
                 try {
-                    GlobalSwap.swap(Arrays.asList(mutex, canWrite), globalEmpty);
+                    globalSwap.swap(Arrays.asList(mutex, canWrite), globalEmpty);
 
                     //System.out.println("Started writing");
                     Thread.sleep(rd.nextInt(100));
                     System.out.println("Writing from " + position);
                     //System.out.println("End of writing");
 
-                    GlobalSwap.swap(Arrays.asList(globalVariable), globalEmpty);
-                    if (howManyReading == 0) GlobalSwap.swap(globalEmpty, Arrays.asList(canWrite));
-                    GlobalSwap.swap(globalEmpty, Arrays.asList(globalVariable, mutex));
+                    globalSwap.swap(Arrays.asList(globalVariable), globalEmpty);
+                    if (howManyReading == 0) globalSwap.swap(globalEmpty, Arrays.asList(canWrite));
+                    globalSwap.swap(globalEmpty, Arrays.asList(globalVariable, mutex));
 
                 } catch (Exception e) {
                     System.err.println("Thread interrupted");
@@ -96,7 +96,7 @@ public class CzytelnicyPisarze {
     }
 
     public static void main(String args[]) throws Exception {
-        GlobalSwap.swap(globalEmpty, Arrays.asList(mutex, canWrite, globalVariable));
+        globalSwap.swap(globalEmpty, Arrays.asList(mutex, canWrite, globalVariable));
 
         Thread t2 = new Thread(new Pisarz());
         Thread t3 = new Thread(new Czytelnik());

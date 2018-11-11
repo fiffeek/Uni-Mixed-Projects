@@ -186,13 +186,13 @@ public class Swapper<E> {
         boolean alreadyInvoked = false;
         for (List<Waiter> waiters: elementsAvailability.values()) {
 
-            for (Waiter waiter_aux: waiters) {
+            for (Waiter waiterTemp: waiters) {
 
                 // if it is and if it has not been invoked so far
                 // the swapper invokes that thread and breaks
                 // (one thread can affect the other one so the swapper
                 // can't actually grant the permission to more than one thread here)
-                if (waiter_aux.elemNumber == 0) {
+                if (waiterTemp.elemNumber == 0) {
                     logDebug("Invoking waiter");
 
                     if (Thread.currentThread().isInterrupted()) {
@@ -203,7 +203,7 @@ public class Swapper<E> {
 
                     // ~ note that the swapper does not release the mutex
                     // instead it it being passed to the next thread
-                    waiter_aux.invoke();
+                    waiterTemp.invoke();
                     alreadyInvoked = true;
                     break;
                 }

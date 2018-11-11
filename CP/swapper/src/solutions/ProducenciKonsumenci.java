@@ -1,9 +1,7 @@
 package solutions;
 
 import swapper.Swapper;
-
 import java.util.*;
-import java.util.concurrent.Semaphore;
 
 public class ProducenciKonsumenci {
 
@@ -17,7 +15,6 @@ public class ProducenciKonsumenci {
     private static int firstToConsume = 0;
     private static int firstToPlace = 0;
     private static int produced = 0;
-
 
     private static class Producent implements Runnable {
 
@@ -88,7 +85,6 @@ public class ProducenciKonsumenci {
 
     public static void main(String args[]) throws Exception {
         GlobalSwap.swap(globalEmpty, Arrays.asList(mutex, canProduce));
-
 
         Thread t1 = new Thread(new Producent());
         Thread t3 = new Thread(new Producent());

@@ -6,7 +6,7 @@ import java.util.concurrent.Semaphore;
 
 public class Swapper<E> {
 
-    public HashSet<E> elements;
+    private HashSet<E> elements;
     private Semaphore mutex;
     private ConcurrentHashMap<E, List<Waiter>> elementsAvailability;
 
@@ -85,7 +85,7 @@ public class Swapper<E> {
     }
 
     /**
-     * Simple log funcion, which logs some info to stderr
+     * Simple log function, which logs some info to stderr
      * when the parameter DEBUG is on
      * @param deb - the string to push on stderr
      */
@@ -107,17 +107,17 @@ public class Swapper<E> {
     }
 
     /**
-     * Waitis until all elements of a removed collection are present
+     * Waits until all elements of a removed collection are present
      * on a swapper, then (atomically) removes that elements and adds
      * the elements from the 'added' collection
      * @param removed - collection to remove from the swapper
      * @param added - collection to add to the swapper
      */
     public void swap(Collection<E> removed, Collection<E> added) throws InterruptedException  {
-        // DISCLAIMER: solution with mutex forwarding
+        // DISCLAIMER: solution with mutex forwarding,
         // sections commented with ~ are about that
 
-        // firsly we ensure that there are no duplicates in either of
+        // firstly we ensure that there are no duplicates in either of
         // the collections given
         HashSet<E> removedSet = new HashSet<>(removed);
         HashSet<E> addedSet = new HashSet<>(added);
@@ -169,7 +169,7 @@ public class Swapper<E> {
         elements.removeAll(removedSet);
 
         // now for every element, that the swapper removed
-        // we have to update all the Waiters in a lists of that elements
+        // we have to update all the Waiters in every list of that elements
         changeConditions(removedSet, 1);
 
         // it is time to add the elements and
@@ -215,7 +215,7 @@ public class Swapper<E> {
         }
 
         // ~ if none of the threads were given a mutex
-        // the swapper gives it to the world (random one who will want it)
+        // the swapper gives it to the world (random one who wants it)
         if (!alreadyInvoked) {
 
             if (Thread.currentThread().isInterrupted()) {
